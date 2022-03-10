@@ -14,6 +14,7 @@ void setup() {
 
 // MAIN CODE:
 void loop() {
-
+  kinematics.update();
+  
   delay(5);
 }
