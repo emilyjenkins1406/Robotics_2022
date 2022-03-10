@@ -1,198 +1,159 @@
 // this #ifndef stops this file
 // from being included mored than
-// once by the compiler. 
+// once by the compiler.
 #ifndef _LINESENSOR_H
-# define _LINESENSOR_H
-# define LS_LEFT_PIN A0
-# define LS_CENTRE_PIN A2
-# define LS_RIGHT_PIN A3
-# define MOST_LEFT_PIN A11
-# define  MOST_RIGHT_PIN A4
-# define EMIT 11
+#define _LINESENSOR_H
+#define LS_LEFT_PIN A0
+#define LS_CENTRE_PIN A2
+#define LS_RIGHT_PIN A3
+#define MOST_LEFT_PIN A11
+#define MOST_RIGHT_PIN A4
+#define EMIT 11
 // Places to store microsecond count
-unsigned long start_time; // t_1
-unsigned long end_time;   // t_2
-unsigned long elapsed_time; // t_elapsed
-unsigned long left_elapsed_time; // t_elapsed
-unsigned long right_elapsed_time; // t_elapsed
-// Storing the values
-unsigned long ARRAY[5] = {0,0,0,0,0};
-unsigned long RETURN_ARRAY[2] = {0,0};
-// Setting inital conditions
-bool x = false;
-bool y = false;
-bool z = false; 
-bool a = false; 
-bool done = false;
-float left;
-float w_left;
-float w_right;
-float e_line;
-float normalised_left;
-float normalised_right;
-float normalised_centre;
+// unsigned long start_time;         // t_1
+// unsigned long end_time;           // t_2
+// unsigned long elapsed_time;       // t_elapsed
+// unsigned long left_elapsed_time;  // t_elapsed
+// unsigned long right_elapsed_time; // t_elapsed
+// float left;
 
+#define NUM_LS 5
+#define LS_EMIT_PIN 11
+
+#if NUM_LS == 5
+int ls_pins[5] = {A11, A0, A2, A3, A4};
+#elif NUM_LS == 3
+int ls_pins[3] = {A0, A2, A3};
+#else
+#error Unknown number of pins
+#endif
 
 // Class to operate the linesensor(s).
-class LineSensor_c {
-  public:
- 
-    LineSensor_c() {
-    }
- 
-    void initialise() {
-         
-  // setup code here, to run once:
-    pinMode(EMIT, OUTPUT);
-    pinMode(LS_LEFT_PIN, INPUT);
-    pinMode(LS_CENTRE_PIN, INPUT);
-    pinMode(LS_RIGHT_PIN, INPUT); 
-    pinMode(MOST_LEFT_PIN, INPUT); 
-    pinMode(MOST_RIGHT_PIN, INPUT);      
-    digitalWrite(EMIT, HIGH); 
-
-  // Start serial, send debug text.
-      Serial.begin(9600);
-      Serial.println("***RESET***");
-    }
-
- int setSensors() {
-  // Charging capacitor by setting input pin
-  // temporarily to output and HIGH
-  pinMode(LS_LEFT_PIN, OUTPUT);
-  pinMode(LS_CENTRE_PIN, OUTPUT);
-  pinMode(LS_RIGHT_PIN, OUTPUT);
-  pinMode(MOST_LEFT_PIN, OUTPUT);
-  pinMode(MOST_RIGHT_PIN, OUTPUT);
-  digitalWrite( LS_LEFT_PIN, HIGH);
-  digitalWrite( LS_CENTRE_PIN, HIGH);
-  digitalWrite( LS_RIGHT_PIN, HIGH);
-  digitalWrite(MOST_LEFT_PIN, HIGH);
-  digitalWrite(MOST_RIGHT_PIN, HIGH);
-  
-  // Tiny delay for capacitor to charge.
-  delayMicroseconds(10);
-
-  //  Turn input pin back to an input
-   pinMode(LS_LEFT_PIN, INPUT);
-   pinMode(LS_CENTRE_PIN, INPUT);
-   pinMode(LS_RIGHT_PIN, INPUT);
-   pinMode(MOST_LEFT_PIN, INPUT);
-   pinMode(MOST_RIGHT_PIN, INPUT);
-
-
-// Starting to measure time
-  start_time = micros();
-
-// While loop that collects the time of each the sensors 
-while (x == false || y == false || z == false) {
-
-  // Stay in a loop whilst the capacitor
-  // is still registering as "HIGH". 
-  if ( digitalRead( LS_LEFT_PIN ) == LOW && x == false ) {
-      end_time = micros();
-      elapsed_time = end_time - start_time;
-      ARRAY[0] = elapsed_time;
-      x = true;     
-  }
-  if ( digitalRead(LS_CENTRE_PIN) == LOW && y == false  ) {
-      end_time = micros();
-      elapsed_time = end_time - start_time;
-      ARRAY[1] = elapsed_time;
-      y = true;
-  }
-  if ( digitalRead(LS_RIGHT_PIN) == LOW && z == false  ) {
-      end_time = micros();
-      elapsed_time = end_time - start_time;
-      ARRAY[2] = elapsed_time;
-      z = true;
-  }
-  }
-
-   // Resetting our values so the while loop can go again
-   x = false;
-   y = false;
-   z = false; 
-   return ARRAY[1]; 
-}
-
-
-
-int linecheck()
-
- {
-    pinMode(MOST_LEFT_PIN, OUTPUT);
-    digitalWrite(MOST_LEFT_PIN, HIGH);
-    delayMicroseconds(10);
-    pinMode(MOST_LEFT_PIN, INPUT);
-
-    
-  // MOST LEFT SENSOR
-  start_time = micros(); 
-  bool LEFT = false;
-  // Tiny delay for capacitor to charge.
-  delayMicroseconds(10);
-  
-  while (LEFT == false) {
-    if ( digitalRead(MOST_LEFT_PIN) == LOW && LEFT == false  ) {
-      end_time = micros();
-      left_elapsed_time = end_time - start_time;
-      LEFT = true;
-    }
-  }
-
-    pinMode(MOST_RIGHT_PIN, OUTPUT);
-    digitalWrite(MOST_RIGHT_PIN, HIGH);
-    delayMicroseconds(10);
-    pinMode(MOST_RIGHT_PIN, INPUT);
-
-  // MOST RIGHT SENSOR
-  start_time = micros(); 
-  bool RIGHT = false;
-  // Tiny delay for capacitor to charge.
-  delayMicroseconds(10);
-  while (RIGHT == false) {
-    if ( digitalRead(MOST_RIGHT_PIN) == LOW && RIGHT == false  ) {
-      end_time = micros();
-      right_elapsed_time = end_time - start_time;
-      RIGHT = true;
-    }
-  }
-  
-  delayMicroseconds(10);
-
-  // if most left sensor is on the black line
-  if(left_elapsed_time > 1000){
-    return 0;
-  }
-  if(right_elapsed_time > 1000){
-    return 1;
-  }
-  else {
-    return 2;
-  }
-  
-}
-
-
-int function()
-
-// the middle sensor on the black line 
+class LineSensor_c
 {
-  normalised_left = float(ARRAY[0])/ (float(ARRAY[0]+ ARRAY[1] + ARRAY[2]));
-  normalised_centre = float(ARRAY[2])/ float((ARRAY[0]+ ARRAY[1] + ARRAY[2]));
-  normalised_centre = float(ARRAY[1])/ float((ARRAY[0]+ ARRAY[1] + ARRAY[2]));
-  w_left = normalised_left + (normalised_centre * 0.5);
-  w_right = normalised_centre + (normalised_centre * 0.5);
-  e_line = w_left - w_right;
-  float turn_pwm = 50;  
-  turn_pwm = turn_pwm * e_line;
-  return turn_pwm;
-}
-     
+private:
+  int old_readings[NUM_LS];
 
+public:
+  float weight = 0.75;
+
+  LineSensor_c()
+  {
+    for (int i = 0; i < NUM_LS; i++)
+    {
+      // initialise readings array
+      old_readings[i] = 0;
+    }
+  }
+
+  void initialise()
+  {
+    // Start serial, send debug text.
+    Serial.begin(9600);
+    Serial.println("***RESET***");
+  }
+
+  int read_sensors(int output[], int timeout = 5000)
+  {
+    // Read all of the light sensors and write values into `output`
+    // Returns 0 if all are successful, -1 if the sensor fails after timeout
+
+    // Initialise sensors
+    for (auto &&sensor_pin : ls_pins)
+    {
+      // Charge capacitor by setting input pin
+      // temporarily to output and HIGH
+      pinMode(sensor_pin, OUTPUT);
+
+      digitalWrite(sensor_pin, HIGH);
+    }
+
+    // Tiny delay for capacitors to charge.
+    delayMicroseconds(10);
+
+    for (auto &&sensor_pin : ls_pins)
+    {
+      digitalWrite(sensor_pin, LOW);
+      pinMode(sensor_pin, INPUT);
+    }
+
+    // Read all sensors into ptr array
+    int remaining = NUM_LS; // Number of sensors that haven't reported back
+
+    unsigned long start_time = micros(); // Start measurement time in microseconds
+
+    // Turn on the IR LED
+    pinMode(LS_EMIT_PIN, OUTPUT);
+    digitalWrite(LS_EMIT_PIN, HIGH);
+
+    for (int i = 0; i < NUM_LS; i++)
+    {
+      output[i] = -1;
+    }
+
+    while (remaining > 0)
+    {
+      int elapsed_time = (int)(micros() - start_time);
+
+      for (auto i = 0; i < NUM_LS; i++)
+      {
+        if (output[i] < 0 && digitalRead(ls_pins[i]) == LOW)
+        {
+          int new_val = weight * elapsed_time + (1 - weight) * old_readings[i];
+          old_readings[i] = new_val;
+          output[i] = new_val;
+          remaining--;
+        }
+      }
+
+      if (elapsed_time > timeout)
+      {
+        remaining = -1;
+        Serial.println("LS: Timeout");
+      }
+    }
+
+    return remaining;
+  }
+
+  bool isOnLine(int lsensor_vals[])
+  {
+    // If all of the proportions are within
+    // the range 0.1-0.3, the line has been lost
+    for (auto i = 0; i < NUM_LS; i++)
+    {
+      if (lsensor_vals[i] > 1500)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool isOnLine()
+  {
+    int sensor_vals[NUM_LS];
+    read_sensors(sensor_vals);
+    return isOnLine(sensor_vals);
+  }
+
+  // the middle sensor on the black line
+  int line_error()
+  {
+    int sensor_vals[NUM_LS];
+    read_sensors(sensor_vals);
+    float normalised_left = float(sensor_vals[1]) / (float(sensor_vals[1] + sensor_vals[2] + sensor_vals[3]));
+    float normalised_centre = float(sensor_vals[2]) / float((sensor_vals[1] + sensor_vals[2] + sensor_vals[3]));
+    float normalised_right = float(sensor_vals[3]) / float((sensor_vals[1] + sensor_vals[2] + sensor_vals[3]));
+
+    float w_left = normalised_left + (normalised_centre * 0.5);
+    float w_right = normalised_right + (normalised_centre * 0.5);
+
+    float e_line = w_left - w_right;
+    float turn_pwm = 50;
+    turn_pwm = turn_pwm * e_line;
+    return turn_pwm;
+  }
 };
-
-
 
 #endif
