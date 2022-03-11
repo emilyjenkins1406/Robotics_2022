@@ -1,7 +1,7 @@
-#include "motors.h"
-#include "linesensor.h"
-#include "encoders.h"
-#include "kinematics.h"
+#include "../arduino_control/motors.h"
+#include "../arduino_control/linesensor.h"
+#include "../arduino_control/encoders.h"
+#include "../arduino_control/kinematics.h"
 
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
