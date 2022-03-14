@@ -13,10 +13,10 @@
 LSM6 imu;
 
 
-#define EXPONENTIAL_SMOOTHING_WEIGHT 0.5  // Exponential smoothing factor, set to 1 to disable smoothing
+#define EXPONENTIAL_SMOOTHING_WEIGHT 0.9  // Exponential smoothing factor, set to 1 to disable smoothing
 #define IMU_READ_DELAY 10
 
-#define CALIBRATION_READINGS 100
+#define CALIBRATION_READINGS 1000
 
 int ax_base;
 int ay_base;
@@ -86,23 +86,82 @@ void read_imu() {
     imu.g.z = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.g.z - gz_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * gz));
 
     // The perfect smoothing algorithm
-    if (abs(imu.a.x) < 400)
+    int threshold = 10;
+    if (abs(imu.a.x) < threshold)
         imu.a.x = 0;
 
-    if (abs(imu.a.y) < 400)
+    if (abs(imu.a.y) < threshold)
         imu.a.y = 0;
 
-    if (abs(imu.a.z) < 400)
+    if (abs(imu.a.z) < threshold)
         imu.a.z = 0;
 
-    if (abs(imu.g.x) < 400)
+    if (abs(imu.g.x) < threshold)
         imu.g.x = 0;
 
-    if (abs(imu.g.y) < 400)
+    if (abs(imu.g.y) < threshold)
         imu.g.y = 0;
 
-    if (abs(imu.g.z) < 400)
+    if (abs(imu.g.z) < threshold)
         imu.g.z = 0;
 }
+
+class Acc_Odometry
+{
+private:
+    unsigned long ts_old;
+public:
+    float vx = 0;
+    float x = 0;
+    float vy = 0;
+    float y = 0;
+    float vz = 0;
+    float z = 0;
+
+    Acc_Odometry() {
+        ts_old = millis();
+    }
+
+    void integrate() {
+        read_imu();
+
+        unsigned long ts_current = millis();
+        int dt = (int)(ts_current - ts_old);
+
+        vx += imu.a.x * dt / 1000.0;
+        x  += vx      * dt / 1000.0;
+        vy += imu.a.y * dt / 1000.0;
+        y  += vy      * dt / 1000.0;
+        vz += imu.a.z * dt / 1000.0;
+        z  += vz      * dt / 1000.0;
+
+        // X Component
+        // Serial.print("ax:");
+        // Serial.print(imu.a.x);
+        Serial.print(" vx:");
+        Serial.print(vx);
+        Serial.print(" x:");
+        Serial.print(x);
+
+        // Y Component
+        // Serial.print(" ay:");
+        // Serial.print(imu.a.y);
+        Serial.print(" vy:");
+        Serial.print(vy);
+        Serial.print(" y:");
+        Serial.println(y);
+
+        // Z component
+        // Serial.print(" az:");
+        // Serial.print(imu.a.z);
+        // Serial.print(" vz:");
+        // Serial.print(vz);
+        // Serial.print(" z:");
+        // Serial.println(z);
+        
+        ts_old = ts_current;
+    }
+};
+
 
 #endif

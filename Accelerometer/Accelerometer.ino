@@ -9,6 +9,7 @@
 
 Kinematics_c kinematics;
 Motors_c motors;
+Acc_Odometry odometry;
 
 unsigned long state_ts;
 
@@ -43,29 +44,40 @@ void setup()
     imu_setup();
 }
 
+
 // MAIN CODE:
 void loop()
 {
     // Make a read of the sensor.
-    read_imu();
+    // read_imu();
 
     // Report values
-    Serial.print("AX: ");
-    Serial.print(imu.a.x);
-    Serial.print(" AY: ");
-    Serial.print(imu.a.y);
-    Serial.print(" AZ: ");
-    Serial.print(imu.a.z);
-    Serial.print(" GX: ");
-    Serial.print(imu.g.x);
-    Serial.print(" GY: ");
-    Serial.print(imu.g.y);
-    Serial.print(" GZ: ");
-    Serial.println(imu.g.z);
+    // Serial.print("AX: ");
+    // Serial.print(imu.a.x);
+    // Serial.print(" AY: ");
+    // Serial.print(imu.a.y);
+    // Serial.print(" AZ: ");
+    // Serial.print(imu.a.z);
+    // Serial.print(" GX: ");
+    // Serial.print(imu.g.x);
+    // Serial.print(" GY: ");
+    // Serial.print(imu.g.y);
+    // Serial.print(" GZ: ");
+    // Serial.println(imu.g.z);
+
 
     // Short delay to keep things
     // slow enough to observe.
     // There is a limit to how fast you
     // can make i2c readings.
+    odometry.integrate();
+
+    // Serial.print("X: ");
+    // Serial.print(odometry.x);
+    // Serial.print("Y: ");
+    // Serial.print(odometry.y);
+    // Serial.print("Z: ");
+    // Serial.println(odometry.z);
+
     delay(IMU_READ_DELAY);
 }
