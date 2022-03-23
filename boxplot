@@ -1,0 +1,19 @@
+import seaborn as sns
+import pandas as pd
+
+# Inital and Imporved data
+x_error_initial = [-9.1, -12.4, -8.6, -10.3, -15.4, -11.2, 10.0, -6.0, -8.1, 1.1]  
+x_error_improved = [-12.2, 10.1, 8.1, -8.2, 0.2, 8.5, -6.4, 6.2, 1.1, 0.8]
+
+# labeling
+x_initial_dataframe = pd.DataFrame({'Alpha =':x_error_initial})
+x_improved_dataframe = pd.DataFrame({'Alpha = ':x_error_improved})
+
+
+# We then add the two dataframes together.
+x_combined = pd.concat([ x_initial_dataframe, x_improved_dataframe], axis=0)
+
+
+# We can now plot both datasets at the same time.
+plot_x_error = sns.boxplot(data=x_combined)
+plot_x_error.set(xlabel ="Alpha", ylabel = "Error", title ='Box Plot for Alpha Values')
