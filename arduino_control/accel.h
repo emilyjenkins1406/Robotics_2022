@@ -13,7 +13,6 @@
 LSM6 imu;
 
 
-#define EXPONENTIAL_SMOOTHING_WEIGHT 0.9  // Exponential smoothing factor, set to 1 to disable smoothing
 #define IMU_READ_DELAY 10
 
 #define CALIBRATION_READINGS 1000
@@ -68,6 +67,8 @@ void imu_setup() {
     imu.g.z = gz_base;
 }
 
+float imu_exponential_smoothing = 0.9;
+
 void read_imu() {
     long ax = imu.a.x;
     long ay = imu.a.y;
@@ -78,32 +79,12 @@ void read_imu() {
 
     imu.read();
 
-    imu.a.x = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.a.x - ax_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * ax));
-    imu.a.y = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.a.y - ay_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * ay));
-    imu.a.z = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.a.z - az_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * az));
-    imu.g.x = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.g.x - gx_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * gx));
-    imu.g.y = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.g.y - gy_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * gy));
-    imu.g.z = (long)((EXPONENTIAL_SMOOTHING_WEIGHT * (imu.g.z - gz_base)) + ((1 - EXPONENTIAL_SMOOTHING_WEIGHT) * gz));
-
-    // The perfect smoothing algorithm
-    int threshold = 10;
-    if (abs(imu.a.x) < threshold)
-        imu.a.x = 0;
-
-    if (abs(imu.a.y) < threshold)
-        imu.a.y = 0;
-
-    if (abs(imu.a.z) < threshold)
-        imu.a.z = 0;
-
-    if (abs(imu.g.x) < threshold)
-        imu.g.x = 0;
-
-    if (abs(imu.g.y) < threshold)
-        imu.g.y = 0;
-
-    if (abs(imu.g.z) < threshold)
-        imu.g.z = 0;
+    imu.a.x = (long)((imu_exponential_smoothing * (imu.a.x - ax_base)) + ((1 - imu_exponential_smoothing) * ax));
+    imu.a.y = (long)((imu_exponential_smoothing * (imu.a.y - ay_base)) + ((1 - imu_exponential_smoothing) * ay));
+    imu.a.z = (long)((imu_exponential_smoothing * (imu.a.z - az_base)) + ((1 - imu_exponential_smoothing) * az));
+    imu.g.x = (long)((imu_exponential_smoothing * (imu.g.x - gx_base)) + ((1 - imu_exponential_smoothing) * gx));
+    imu.g.y = (long)((imu_exponential_smoothing * (imu.g.y - gy_base)) + ((1 - imu_exponential_smoothing) * gy));
+    imu.g.z = (long)((imu_exponential_smoothing * (imu.g.z - gz_base)) + ((1 - imu_exponential_smoothing) * gz));
 }
 
 class Acc_Odometry
@@ -138,18 +119,18 @@ public:
         // X Component
         // Serial.print("ax:");
         // Serial.print(imu.a.x);
-        Serial.print(" vx:");
-        Serial.print(vx);
-        Serial.print(" x:");
-        Serial.print(x);
+        // Serial.print(" vx:");
+        // Serial.print(vx);
+        // Serial.print(" x:");
+        // Serial.print(x);
 
         // Y Component
         // Serial.print(" ay:");
         // Serial.print(imu.a.y);
-        Serial.print(" vy:");
-        Serial.print(vy);
-        Serial.print(" y:");
-        Serial.println(y);
+        // Serial.print(" vy:");
+        // Serial.print(vy);
+        // Serial.print(" y:");
+        // Serial.println(y);
 
         // Z component
         // Serial.print(" az:");

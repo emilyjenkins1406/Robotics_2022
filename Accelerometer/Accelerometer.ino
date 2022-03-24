@@ -52,12 +52,12 @@ void loop()
     // read_imu();
 
     // Report values
-    // Serial.print("AX: ");
-    // Serial.print(imu.a.x);
-    // Serial.print(" AY: ");
-    // Serial.print(imu.a.y);
-    // Serial.print(" AZ: ");
-    // Serial.print(imu.a.z);
+    Serial.print("AX: ");
+    Serial.print(imu.a.x);
+    Serial.print(" AY: ");
+    Serial.print(imu.a.y);
+    Serial.print(" AZ: ");
+    Serial.println(imu.a.z);
     // Serial.print(" GX: ");
     // Serial.print(imu.g.x);
     // Serial.print(" GY: ");
