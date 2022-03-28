@@ -36,15 +36,15 @@ z_err = pd.DataFrame(data_z)
 # We can now plot both datasets at the same time.
 plot_x_error = sns.boxplot(data=x_err)
 plot_x_error.set(xlabel ="alpha $\\alpha$", ylabel = "Error", title ='Box Plot for X Values')
-plt.savefig("Figures/boxplot_x.png")
+plt.savefig("Figures/boxplot_x.pdf")
 plt.show()
 
 plot_y_error = sns.boxplot(data=y_err)
 plot_y_error.set(xlabel ="alpha $\\alpha$", ylabel = "Error", title ='Box Plot for Y Values')
-plt.savefig("Figures/boxplot_y.png")
+plt.savefig("Figures/boxplot_y.pdf")
 plt.show()
 
 plot_z_error = sns.boxplot(data=z_err)
 plot_z_error.set(xlabel ="alpha $\\alpha$", ylabel = "Error", title ='Box Plot for Z Values')
-plt.savefig("Figures/boxplot_z.png")
+plt.savefig("Figures/boxplot_z.pdf")
 plt.show()
