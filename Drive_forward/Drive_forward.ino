@@ -1,9 +1,9 @@
 #include "../../arduino_control/accel.h"
+#include "../../arduino_control/buttons.h"
 #include "../../arduino_control/encoders.h"
 #include "../../arduino_control/kinematics.h"
 #include "../../arduino_control/linesensor.h"
 #include "../../arduino_control/motors.h"
-#include "../../arduino_control/buttons.h"
 
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
@@ -14,6 +14,7 @@ Acc_Odometry odometry;
 
 unsigned long state_ts;
 
+enum States {forward, backward, stop};
 int state;
 
 // SETUP CODE:
@@ -21,7 +22,7 @@ void setup() {
     Wire.begin();
     // motors.initialise();
     Serial.println("***INIT COMPLETE***");
-    state_ts = millis();
+    motors = Motors_c();
 
     // Check the IMU initialised ok.
     if (!imu.init()) {  // no..? :(
@@ -40,7 +41,13 @@ void setup() {
     imu.enableDefault();
 
     imu_setup();
+
+    Serial.print("Starting");
+
+    state_ts = millis();
+    state = forward;
 }
+
 
 // MAIN CODE:
 void loop() {
@@ -67,6 +74,37 @@ void loop() {
         odometry.wheel_y = 0;
         odometry.wheel_vz = 0;
         odometry.wheel_z = 0;
+    }
+
+    switch (state) {
+        case forward: {
+            Serial.print("Forward");
+            motors.move(20);
+            if ((int)(millis() - state_ts) > 3000) {
+                Serial.print(" Done ");
+                Serial.print(millis() - state_ts);
+                Serial.print((millis() - state_ts) > 5000);
+                state = backward;
+                state_ts = millis();
+            }
+            break;
+        }
+        case backward: {
+            motors.move(-20);
+            if (odometry.x < 0) {
+                Serial.print(" Done ");
+                Serial.print(odometry.x);
+                state = stop;
+                state_ts = millis();
+            }
+            break;
+        }
+        case stop: {
+            Serial.print(" Stop");
+            motors.stop();
+            break;
+        }
+        Serial.println("");
     }
 
     delay(IMU_READ_DELAY);
