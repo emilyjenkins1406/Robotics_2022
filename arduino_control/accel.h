@@ -142,8 +142,8 @@ class Acc_Odometry {
         int dt = (int)(ts_current - ts_old);
 
         acc_ax = (float)imu.a.x / 16348 / 9800; // mm/s^s
-        acc_vx += acc_ax * dt / 1000.0;  // mm/s
-        acc_x += acc_vx * dt / 1000.0;   // mm
+        acc_vx += acc_ax * dt / 1000.0;         // mm/s
+        acc_x += acc_vx * dt / 1000.0;          // mm
         acc_ay = (float)imu.a.y / 16348 / 9800;
         acc_vy += acc_ay * dt / 1000.0;
         acc_y += acc_vy * dt / 1000.0;

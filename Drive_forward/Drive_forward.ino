@@ -8,13 +8,21 @@
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
 
+#define USE_DISPLAY 1
+
+#if USE_DISPLAY
+    #include <Pololu3piPlus32U4LCD.h>
+    using namespace Pololu3piPlus32U4;
+    LCD display;
+#endif
+
 Kinematics_c kinematics;
 Motors_c motors;
 Acc_Odometry odometry;
 
 unsigned long state_ts;
 
-enum States {forward, backward, stop};
+enum States { forward, backward, stop };
 int state;
 
 // SETUP CODE:
@@ -87,6 +95,12 @@ void loop() {
                 state = backward;
                 state_ts = millis();
             }
+            #if USE_DISPLAY
+                display.clear();
+                display.print(millis() - state_ts);
+                display.gotoXY(0, 1);
+                display.print(odometry.x);
+            #endif
             break;
         }
         case backward: {
@@ -96,7 +110,17 @@ void loop() {
                 Serial.print(odometry.x);
                 state = stop;
                 state_ts = millis();
+                #if USE_DISPLAY
+                    display.clear();
+                    display.print("Finished");
+                    display.gotoXY(0, 1);
+                    display.print(odometry.x);
+                #endif
             }
+            #if USE_DISPLAY
+                display.clear();
+                display.print(odometry.x);
+            #endif
             break;
         }
         case stop: {
