@@ -8,7 +8,7 @@
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
 
-#define USE_DISPLAY 1
+#define USE_DISPLAY 1 // Set to 0 to disable the onboard display
 
 #if USE_DISPLAY
     #include <Pololu3piPlus32U4LCD.h>
@@ -19,18 +19,20 @@
 Kinematics_c kinematics;
 Motors_c motors;
 Acc_Odometry odometry;
+Button_c button;
 
 unsigned long state_ts;
 
-enum States { forward, backward, stop };
+enum States { forward, pause, backward, stop };
 int state;
 
 // SETUP CODE:
 void setup() {
     Wire.begin();
-    // motors.initialise();
+    motors.initialise();
     Serial.println("***INIT COMPLETE***");
     motors = Motors_c();
+    button = Button_c();
 
     // Check the IMU initialised ok.
     if (!imu.init()) {  // no..? :(
@@ -48,6 +50,10 @@ void setup() {
     // Set the IMU with default settings.
     imu.enableDefault();
 
+    #if USE_DISPLAY
+        display.clear();
+        display.print("IMU init");
+    #endif
     imu_setup();
 
     Serial.print("Starting");
@@ -56,6 +62,7 @@ void setup() {
     state = forward;
 }
 
+int motor_speed = 50;
 
 // MAIN CODE:
 void loop() {
@@ -68,31 +75,40 @@ void loop() {
     Serial.print(" X: ");
     Serial.println(odometry.x);
 
-    if (Button_c().is_button_pressed(BTN_A)) {
-        odometry.acc_vx = 0;
-        odometry.acc_x = 0;
-        odometry.acc_vy = 0;
-        odometry.acc_y = 0;
-        odometry.acc_vz = 0;
-        odometry.acc_z = 0;
+    // If button A is pressed, reset the odometry system
+    if (button.is_button_pressed(BTN_A)) {
+        odometry.reset();
+    }
 
-        odometry.wheel_vx = 0;
-        odometry.wheel_x = 0;
-        odometry.wheel_vy = 0;
-        odometry.wheel_y = 0;
-        odometry.wheel_vz = 0;
-        odometry.wheel_z = 0;
+    if (button.is_button_pressed(BTN_B)) {
+        display.clear();
+        display.print("Reset");
+        delay(500);
+        display.gotoXY(0, 1);
+        state = forward;
+        state_ts = millis();
+        odometry.reset();
+        display.print(odometry.x);
+    }
+
+    if (button.is_button_pressed(BTN_C)) {
+        motor_speed += 10;
+        if (motor_speed > 200) {
+            motor_speed = 0;
+        }
+        display.clear();
+        display.print("MS: ");
+        display.print(motor_speed);
     }
 
     switch (state) {
         case forward: {
+            // Move forward for set time
             Serial.print("Forward");
-            motors.move(20);
+            motors.move(motor_speed);
             if ((int)(millis() - state_ts) > 3000) {
                 Serial.print(" Done ");
-                Serial.print(millis() - state_ts);
-                Serial.print((millis() - state_ts) > 5000);
-                state = backward;
+                state = pause;
                 state_ts = millis();
             }
             #if USE_DISPLAY
@@ -100,11 +116,26 @@ void loop() {
                 display.print(millis() - state_ts);
                 display.gotoXY(0, 1);
                 display.print(odometry.x);
+                display.print(" ");
+                display.print(motor_speed, 3);
             #endif
             break;
         }
+        case pause: {
+            // Pause movement
+            Serial.print("Pause");
+            if ((millis() - state_ts) > 1000) {
+                Serial.print(" Done ");
+                state = backward;
+                state_ts = millis();
+            } else {
+                motors.stop();
+            }
+            break;
+        }
         case backward: {
-            motors.move(-20);
+            // Move back until overall distance is 0
+            motors.move(-25);
             if (odometry.x < 0) {
                 Serial.print(" Done ");
                 Serial.print(odometry.x);
@@ -124,6 +155,7 @@ void loop() {
             break;
         }
         case stop: {
+            // Wait for measurement
             Serial.print(" Stop");
             motors.stop();
             break;

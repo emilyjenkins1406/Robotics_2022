@@ -135,6 +135,35 @@ class Acc_Odometry {
 
     Acc_Odometry() { ts_old = millis(); }
 
+    void reset() {
+        acc_ax = 0;
+        acc_vx = 0;
+        acc_x = 0;
+        acc_ay = 0;
+        acc_vy = 0;
+        acc_y = 0;
+        acc_az = 0;
+        acc_vz = 0;
+        acc_z = 0;
+
+        wheel_ax = 0;
+        wheel_vx = 0;
+        wheel_x = 0;
+        wheel_ay = 0;
+        wheel_vy = 0;
+        wheel_y = 0;
+        wheel_az = 0;
+        wheel_vz = 0;
+        wheel_z = 0;
+
+        vx = 0;
+        vy = 0;
+        vz = 0;
+        x = 0;
+        y = 0;
+        z = 0;
+    }
+
     void acc_integrate() {
         read_imu();
 
