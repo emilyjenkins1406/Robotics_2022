@@ -1,16 +1,18 @@
 #include "../../arduino_control/accel.h"
+#include "../../arduino_control/buttons.h"
 #include "../../arduino_control/encoders.h"
 #include "../../arduino_control/kinematics.h"
-#include "../../arduino_control/linesensor.h"
+#include "../../arduino_control/lights.h"
 #include "../../arduino_control/motors.h"
-#include "../../arduino_control/buttons.h"
 
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
+#define FILTERED 1  // Whether to use the filtered or unfiltered imu values
 
 Kinematics_c kinematics;
 Motors_c motors;
 Acc_Odometry odometry;
+Led_c led;
 
 unsigned long state_ts;
 
@@ -22,6 +24,7 @@ void setup() {
     // motors.initialise();
     Serial.println("***INIT COMPLETE***");
     state_ts = millis();
+    led = Led_c();
 
     // Check the IMU initialised ok.
     if (!imu.init()) {  // no..? :(
@@ -40,7 +43,20 @@ void setup() {
     imu.enableDefault();
 
     imu_setup();
+    Button_c().wait_for_button(BTN_A);
+
+    Serial.print("Filtered: ");
+    Serial.print(FILTERED);
+    #if FILTERED
+        Serial.print("Exp Smooth Fact: ");
+        Serial.print(imu_exponential_smoothing);
+    #endif
+    Serial.println("");
+
+    Serial.println("X, Y, Z");
 }
+
+int num_readigs = 0;
 
 // MAIN CODE:
 void loop() {
@@ -48,25 +64,28 @@ void loop() {
     // slow enough to observe.
     // There is a limit to how fast you
     // can make i2c readings.
-    odometry.integrate();
-
-    Serial.print(" X: ");
-    Serial.println(odometry.x);
+    #if FILTERED
+        read_imu();
+    #else
+        imu.read();
+    #endif
 
     if (Button_c().is_button_pressed(BTN_A)) {
-        odometry.acc_vx = 0;
-        odometry.acc_x = 0;
-        odometry.acc_vy = 0;
-        odometry.acc_y = 0;
-        odometry.acc_vz = 0;
-        odometry.acc_z = 0;
+        odometry.reset();
+    }
 
-        odometry.wheel_vx = 0;
-        odometry.wheel_x = 0;
-        odometry.wheel_vy = 0;
-        odometry.wheel_y = 0;
-        odometry.wheel_vz = 0;
-        odometry.wheel_z = 0;
+    Serial.print(imu.a.x);
+    Serial.print(", ");
+    Serial.print(imu.a.y);
+    Serial.print(", ");
+    Serial.println(imu.a.z);
+
+    num_readigs++;
+    if (num_readigs >= 1000) {
+        while (1) {
+            led.toggle_led(led.orange);
+            delay(1000);
+        }
     }
 
     delay(IMU_READ_DELAY);
