@@ -19,6 +19,8 @@ LSM6 imu;
 
 #define CALIBRATION_READINGS 1000
 
+#define CONVERSION_FACTOR 8192
+
 int ax_base;
 int ay_base;
 int az_base;
@@ -30,6 +32,9 @@ int gz_base;
 // Routine for calibrating the IMU data
 void imu_setup() {
     Serial.println("Calibrating");
+
+    imu.writeReg(LSM6::CTRL1_XL, 0b01011000); // 208 Hz, +/4 g
+
     // Store readings
     long ax = 0;
     long ay = 0;
@@ -170,13 +175,13 @@ class Acc_Odometry {
         unsigned long ts_current = millis();
         int dt = (int)(ts_current - ts_old);
 
-        acc_ax = (float)imu.a.x / 16348 / 9800; // mm/s^s
+        acc_ax = (float)imu.a.x / CONVERSION_FACTOR / 9800; // mm/s^s
         acc_vx += acc_ax * dt / 1000.0;         // mm/s
         acc_x += acc_vx * dt / 1000.0;          // mm
-        acc_ay = (float)imu.a.y / 16348 / 9800;
+        acc_ay = (float)imu.a.y / CONVERSION_FACTOR / 9800;
         acc_vy += acc_ay * dt / 1000.0;
         acc_y += acc_vy * dt / 1000.0;
-        acc_az = (float)imu.a.z / 16348 / 9800;
+        acc_az = (float)imu.a.z / CONVERSION_FACTOR / 9800;
         acc_vz += acc_az * dt / 1000.0;
         acc_z += acc_vz * dt / 1000.0;
     }
@@ -198,20 +203,6 @@ class Acc_Odometry {
         int dt = (int)(ts_current - ts_old);
         if (acc) acc_integrate();
         if (wheel) wheel_integrate();
-
-        Serial.print("acc_ax: ");
-        Serial.print(acc_ax, 8);
-        Serial.print(" acc_vx: ");
-        Serial.print(acc_vx, 8);
-        Serial.print(" acc_x: ");
-        Serial.print(acc_x, 8);
-
-        Serial.print(" wheel_ax: ");
-        Serial.print(wheel_ax);
-        Serial.print(" wheel_vx: ");
-        Serial.print(wheel_vx);
-        Serial.print(" wheel_x: ");
-        Serial.print(wheel_x);
 
         if (acc and wheel) {
             // Use both wheel and accelerometer
