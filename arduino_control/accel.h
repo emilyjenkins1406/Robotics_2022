@@ -17,9 +17,15 @@ LSM6 imu;
 
 #define IMU_READ_DELAY 10
 
-#define CALIBRATION_READINGS 1000
+#define CALIBRATION_READINGS 100
+#define COMAPRE_DELAY 100
 
 #define CONVERSION_FACTOR 8192
+
+#define WHEEL_SAMPLE_FREQ 50 // Ms between wheel samples
+
+#include <Pololu3piPlus32U4LCD.h>
+using namespace Pololu3piPlus32U4;
 
 int ax_base;
 int ay_base;
@@ -33,7 +39,7 @@ int gz_base;
 void imu_setup() {
     Serial.println("Calibrating");
 
-    imu.writeReg(LSM6::CTRL1_XL, 0b01011000); // 208 Hz, +/4 g
+    imu.writeReg(LSM6::CTRL1_XL, 0b01011000);  // 208 Hz, +/4 g
 
     // Store readings
     long ax = 0;
@@ -108,6 +114,8 @@ void read_imu() {
 class Acc_Odometry {
    private:
     unsigned long ts_old;
+    unsigned long ts_wheel;
+    unsigned long ts_compare;
 
    public:
     float acc_ax = 0;
@@ -138,7 +146,9 @@ class Acc_Odometry {
     float y = 0;
     float z = 0;
 
-    Acc_Odometry() { ts_old = millis(); }
+    Acc_Odometry() {
+        ts_old = millis();
+    }
 
     void reset() {
         acc_ax = 0;
@@ -175,30 +185,32 @@ class Acc_Odometry {
         unsigned long ts_current = millis();
         int dt = (int)(ts_current - ts_old);
 
-        acc_ax = (float)imu.a.x / CONVERSION_FACTOR / 9800; // mm/s^s
-        acc_vx += acc_ax * dt / 1000.0;         // mm/s
-        acc_x += acc_vx * dt / 1000.0;          // mm
-        acc_ay = (float)imu.a.y / CONVERSION_FACTOR / 9800;
+        acc_ax = ((float)imu.a.x / CONVERSION_FACTOR) * 9800;  // mm/s^s
+        acc_vx += acc_ax * dt / 1000.0;                        // mm/s
+        acc_x += acc_vx * dt / 1000.0;                         // mm
+        acc_ay = ((float)imu.a.y / CONVERSION_FACTOR) * 9800;
         acc_vy += acc_ay * dt / 1000.0;
         acc_y += acc_vy * dt / 1000.0;
-        acc_az = (float)imu.a.z / CONVERSION_FACTOR / 9800;
+        acc_az = ((float)imu.a.z / CONVERSION_FACTOR) * 9800;
         acc_vz += acc_az * dt / 1000.0;
         acc_z += acc_vz * dt / 1000.0;
     }
 
     void wheel_integrate() {
         unsigned long ts_current = millis();
-        int dt = (int)(ts_current - ts_old);
+        int dt = (int)(ts_current - ts_wheel);
+        float dt_sec = ((float)dt / 1000);  // Why???
         float old_wheel_x = wheel_x;
         float old_wheel_vx = wheel_vx;
-        wheel_x = convertCountToMillimeters(count_l); // mm
-        wheel_vx = (old_wheel_x - wheel_x) / ((float)dt / 1000.0) ; // mm/s
-        wheel_ax = (old_wheel_vx - wheel_vx) / ((float)dt / 1000.0); // mm/s^2
+
+        wheel_x = convertCountToMillimeters(count_l);   // mm
+        wheel_vx = (old_wheel_x - wheel_x) / dt_sec;    // mm/s
+        wheel_ax = (old_wheel_vx - wheel_vx) / dt_sec;  // mm/s^2
     }
 
     float wheel_weight = 0.9;
 
-    void integrate(bool acc = true, bool wheel = true) {
+    void old_integrate(bool acc = true, bool wheel = true) {
         unsigned long ts_current = millis();
         int dt = (int)(ts_current - ts_old);
         if (acc) acc_integrate();
@@ -217,6 +229,35 @@ class Acc_Odometry {
             x = wheel_x;
         }
         ts_old = ts_current;
+    }
+
+    void integrate(LCD display, bool acc = true, bool wheel = true) {
+        // Use both seperately,
+        // update the accelerometer if they are similar after 100ms
+        if (acc) acc_integrate();
+
+        if (wheel and ((float)(millis() - ts_wheel) > WHEEL_SAMPLE_FREQ)) {
+            wheel_integrate();
+            ts_wheel = millis();
+        }
+
+        x = wheel_x;
+
+        Serial.print(acc_ax, 6);
+        Serial.print(", ");
+        Serial.println(wheel_ax, 6);
+
+        if ((millis() - ts_compare) > COMAPRE_DELAY) {
+            display.print(acc_ax, 6);
+            display.gotoXY(0, 1);
+            display.print(wheel_ax, 6);
+
+            // count_l = 0;
+            // count_r = 0;
+            // reset();
+
+            ts_compare = millis();
+        }
     }
 };
 

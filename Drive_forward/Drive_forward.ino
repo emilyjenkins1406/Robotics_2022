@@ -8,9 +8,9 @@
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
 
-#define USE_DISPLAY 1 // Set to 0 to disable the onboard display
+#define USE_DISPLAY 0 // Set to 0 to disable the onboard display
 
-#if USE_DISPLAY
+#if 1
     #include <Pololu3piPlus32U4LCD.h>
     using namespace Pololu3piPlus32U4;
     LCD display;
@@ -56,7 +56,7 @@ void setup() {
     #endif
     imu_setup();
 
-    Serial.print("Starting");
+    //delay(3000);
 
     state_ts = millis();
     state = forward;
@@ -70,10 +70,7 @@ void loop() {
     // slow enough to observe.
     // There is a limit to how fast you
     // can make i2c readings.
-    odometry.integrate();
-
-    Serial.print(" X: ");
-    Serial.println(odometry.x);
+    odometry.integrate(display);
 
     // If button A is pressed, reset the odometry system
     if (button.is_button_pressed(BTN_A)) {
@@ -104,10 +101,8 @@ void loop() {
     switch (state) {
         case forward: {
             // Move forward for set time
-            Serial.print("Forward");
             motors.move(motor_speed);
             if ((int)(millis() - state_ts) > 3000) {
-                Serial.print(" Done ");
                 state = pause;
                 state_ts = millis();
             }
@@ -123,9 +118,7 @@ void loop() {
         }
         case pause: {
             // Pause movement
-            Serial.print("Pause");
             if ((millis() - state_ts) > 1000) {
-                Serial.print(" Done ");
                 state = backward;
                 state_ts = millis();
             } else {
@@ -137,8 +130,6 @@ void loop() {
             // Move back until overall distance is 0
             motors.move(-25);
             if (odometry.x < 0) {
-                Serial.print(" Done ");
-                Serial.print(odometry.x);
                 state = stop;
                 state_ts = millis();
                 #if USE_DISPLAY
@@ -156,7 +147,6 @@ void loop() {
         }
         case stop: {
             // Wait for measurement
-            Serial.print(" Stop");
             motors.stop();
             break;
         }
