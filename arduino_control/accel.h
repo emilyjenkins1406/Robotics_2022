@@ -179,6 +179,26 @@ class Acc_Odometry {
         z = 0;
     }
 
+    // Dump all acceleration/position values to the serial monitor
+    void dump_to_serial(bool flush=false) {
+        // Serial.print(acc_ax);
+        // Serial.print(", ");
+        // Serial.print(acc_vx);
+        // Serial.print(", ");
+        // Serial.print(acc_x);
+        // Serial.print(", ");
+        Serial.print(wheel_ax);
+        Serial.print(", ");
+        Serial.print(wheel_vx);
+        Serial.print(", ");
+        Serial.print(wheel_x);
+        Serial.print(", ");
+        Serial.print(vx);
+        Serial.print(", ");
+        Serial.print(x);
+        if (flush) Serial.println();
+    }
+
     void acc_integrate() {
         read_imu();
 
@@ -199,28 +219,52 @@ class Acc_Odometry {
     void wheel_integrate() {
         unsigned long ts_current = millis();
         int dt = (int)(ts_current - ts_wheel);
-        float dt_sec = ((float)dt / 1000);  // Why???
+        float dt_sec = ((float)dt / 1000.0);
         float old_wheel_x = wheel_x;
         float old_wheel_vx = wheel_vx;
 
         wheel_x = convertCountToMillimeters(count_l);   // mm
-        wheel_vx = (old_wheel_x - wheel_x) / dt_sec;    // mm/s
-        wheel_ax = (old_wheel_vx - wheel_vx) / dt_sec;  // mm/s^2
+        wheel_vx = (wheel_x - old_wheel_x) / dt_sec;    // mm/s
+        wheel_ax = (wheel_vx - old_wheel_vx) / dt_sec;  // mm/s^2
     }
 
     float wheel_weight = 0.9;
 
-    void old_integrate(bool acc = true, bool wheel = true) {
+    void integrate(LCD display, bool acc = true, bool wheel = true) {
+        // Collect current time
         unsigned long ts_current = millis();
-        int dt = (int)(ts_current - ts_old);
+        // If current wheel weight is zero
+        // Update time and return
+        if (wheel_weight < 0.01) {
+            ts_old = ts_current;
+            read_imu();
+            return;
+        }
+        float dt = (float)(ts_current - ts_old)/1000.0;
+
+        // Use both seperately,
+        // update the accelerometer if they are similar after 100ms
         if (acc) acc_integrate();
-        if (wheel) wheel_integrate();
+
+        // Poll wheels every 50 ms
+        if (wheel and ((float)(millis() - ts_wheel) > WHEEL_SAMPLE_FREQ)) {
+            wheel_integrate();
+            ts_wheel = ts_current;
+        }
+
+        // Detect the crash
+        if (acc_ax < -10000) {
+            // Significantly reduce the wheel weighting
+            wheel_weight = 1 - wheel_weight;
+        }
 
         if (acc and wheel) {
             // Use both wheel and accelerometer
-            float ax = wheel_weight * wheel_ax + (1 - wheel_weight) * acc_ax;
-            vx += ax * dt / 1000;
-            x += vx * dt / 1000;
+            // float ax = wheel_weight * wheel_ax + (1 - wheel_weight) * acc_ax;
+            float ax = wheel_ax;
+            // s = ut + 1/2 at^2
+            x = x + vx * dt + 0.5 * ax * pow(dt, 2);
+            vx = vx + ax * dt;
         } else if (acc) {
             // Just use the accelerometer
             x = acc_x;
@@ -228,36 +272,14 @@ class Acc_Odometry {
             // Just use the wheel odometry
             x = wheel_x;
         }
-        ts_old = ts_current;
-    }
 
-    void integrate(LCD display, bool acc = true, bool wheel = true) {
-        // Use both seperately,
-        // update the accelerometer if they are similar after 100ms
-        if (acc) acc_integrate();
-
-        if (wheel and ((float)(millis() - ts_wheel) > WHEEL_SAMPLE_FREQ)) {
-            wheel_integrate();
-            ts_wheel = millis();
-        }
-
-        x = wheel_x;
-
-        Serial.print(acc_ax, 6);
-        Serial.print(", ");
-        Serial.println(wheel_ax, 6);
-
-        if ((millis() - ts_compare) > COMAPRE_DELAY) {
-            display.print(acc_ax, 6);
-            display.gotoXY(0, 1);
-            display.print(wheel_ax, 6);
-
-            // count_l = 0;
-            // count_r = 0;
-            // reset();
+        if (acc and wheel and (millis() - ts_compare) > COMAPRE_DELAY) {
+            // Periodically update accelerometer speed with wheel speed
+            acc_vx = wheel_vx;
 
             ts_compare = millis();
         }
+        ts_old = ts_current;
     }
 };
 

@@ -4,11 +4,12 @@
 #include "../../arduino_control/kinematics.h"
 #include "../../arduino_control/linesensor.h"
 #include "../../arduino_control/motors.h"
+#include "../../arduino_control/lights.h"
 
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
 
-#define USE_DISPLAY 0 // Set to 0 to disable the onboard display
+#define USE_DISPLAY 1 // Set to 0 to disable the onboard display
 
 #if 1
     #include <Pololu3piPlus32U4LCD.h>
@@ -20,6 +21,7 @@ Kinematics_c kinematics;
 Motors_c motors;
 Acc_Odometry odometry;
 Button_c button;
+Led_c led;
 
 unsigned long state_ts;
 
@@ -33,6 +35,7 @@ void setup() {
     Serial.println("***INIT COMPLETE***");
     motors = Motors_c();
     button = Button_c();
+    led = Led_c();
 
     // Check the IMU initialised ok.
     if (!imu.init()) {  // no..? :(
@@ -71,6 +74,15 @@ void loop() {
     // There is a limit to how fast you
     // can make i2c readings.
     odometry.integrate(display);
+    // Serial.print(millis());
+    // Serial.print(", ");
+    odometry.dump_to_serial();
+    Serial.print(", ");
+    Serial.print(odometry.wheel_weight);
+    Serial.print(", ");
+    Serial.print(count_l);
+    Serial.print(", ");
+    Serial.print(convertCountToMillimeters(count_l));
 
     // If button A is pressed, reset the odometry system
     if (button.is_button_pressed(BTN_A)) {
@@ -105,14 +117,13 @@ void loop() {
             if ((int)(millis() - state_ts) > 3000) {
                 state = pause;
                 state_ts = millis();
+                odometry.wheel_weight = 1.0;
             }
             #if USE_DISPLAY
                 display.clear();
-                display.print(millis() - state_ts);
+                display.print(convertCountToMillimeters(count_l));
                 display.gotoXY(0, 1);
                 display.print(odometry.x);
-                display.print(" ");
-                display.print(motor_speed, 3);
             #endif
             break;
         }
@@ -150,8 +161,9 @@ void loop() {
             motors.stop();
             break;
         }
-        Serial.println("");
     }
+
+    Serial.println();
 
     delay(IMU_READ_DELAY);
 }
