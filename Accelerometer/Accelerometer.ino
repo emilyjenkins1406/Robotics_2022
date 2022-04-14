@@ -7,7 +7,7 @@
 
 #define MOTOR_SPEED 80
 #define MOVE_TIME 1000
-#define FILTERED 1  // Whether to use the filtered or unfiltered imu values
+#define FILTERED 0  // Whether to use the filtered or unfiltered imu values
 
 Kinematics_c kinematics;
 Motors_c motors;
@@ -45,10 +45,11 @@ void setup() {
     imu_setup();
     Button_c().wait_for_button(BTN_A);
 
+    delay(2000);
     Serial.print("Filtered: ");
     Serial.print(FILTERED);
     #if FILTERED
-        Serial.print("Exp Smooth Fact: ");
+        Serial.print(" Exp Smooth Fact: ");
         Serial.print(imu_exponential_smoothing);
     #endif
     Serial.println("");

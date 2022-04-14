@@ -14,6 +14,7 @@ LSM6 imu;
 
 // Include the encoders
 #include "encoders.h"
+#include "lights.h"
 
 #define IMU_READ_DELAY 10
 
@@ -22,7 +23,7 @@ LSM6 imu;
 
 #define CONVERSION_FACTOR 8192
 
-#define WHEEL_SAMPLE_FREQ 50 // Ms between wheel samples
+#define WHEEL_SAMPLE_FREQ 100 // Ms between wheel samples
 
 #include <Pololu3piPlus32U4LCD.h>
 using namespace Pololu3piPlus32U4;
@@ -115,6 +116,7 @@ class Acc_Odometry {
    private:
     unsigned long ts_old;
     unsigned long ts_wheel;
+    unsigned long ts_acc;
     unsigned long ts_compare;
 
    public:
@@ -148,6 +150,8 @@ class Acc_Odometry {
 
     Acc_Odometry() {
         ts_old = millis();
+        ts_wheel = millis();
+        ts_acc = millis();
     }
 
     void reset() {
@@ -180,7 +184,7 @@ class Acc_Odometry {
     }
 
     // Dump all acceleration/position values to the serial monitor
-    void dump_to_serial(bool flush=false) {
+    void dump_to_serial(bool flush = false) {
         // Serial.print(acc_ax);
         // Serial.print(", ");
         // Serial.print(acc_vx);
@@ -203,7 +207,7 @@ class Acc_Odometry {
         read_imu();
 
         unsigned long ts_current = millis();
-        int dt = (int)(ts_current - ts_old);
+        int dt = (int)(ts_current - ts_acc);
 
         acc_ax = ((float)imu.a.x / CONVERSION_FACTOR) * 9800;  // mm/s^s
         acc_vx += acc_ax * dt / 1000.0;                        // mm/s
@@ -228,23 +232,33 @@ class Acc_Odometry {
         wheel_ax = (wheel_vx - old_wheel_vx) / dt_sec;  // mm/s^2
     }
 
-    float wheel_weight = 0.9;
+    float wheel_weight = 1.0;
+    bool collision_done = false;
 
-    void integrate(LCD display, bool acc = true, bool wheel = true) {
+    void integrate(bool acc = true, bool wheel = true) {
         // Collect current time
         unsigned long ts_current = millis();
         // If current wheel weight is zero
         // Update time and return
+        Led_c led = Led_c();
         if (wheel_weight < 0.01) {
+            led.set_level(led.orange, true);
+            led.set_level(led.green, false);
             ts_old = ts_current;
-            read_imu();
+            // read_imu();
             return;
+        } else {
+            led.set_level(led.orange, false);
+            led.set_level(led.green, true);
         }
-        float dt = (float)(ts_current - ts_old)/1000.0;
+        float dt = (float)(ts_current - ts_old) / 1000.0;
 
         // Use both seperately,
         // update the accelerometer if they are similar after 100ms
-        if (acc) acc_integrate();
+        if (acc and ((float)(millis() - ts_acc) > WHEEL_SAMPLE_FREQ)) {
+            acc_integrate();
+            ts_acc = ts_current;
+        }
 
         // Poll wheels every 50 ms
         if (wheel and ((float)(millis() - ts_wheel) > WHEEL_SAMPLE_FREQ)) {
@@ -253,18 +267,24 @@ class Acc_Odometry {
         }
 
         // Detect the crash
-        if (acc_ax < -10000) {
+        if (acc_ax < -8000) {
             // Significantly reduce the wheel weighting
-            wheel_weight = 1 - wheel_weight;
+            wheel_weight = 0.0;
+            led.set_level(led.red, true);
+            collision_done = true;
+        }
+        if (collision_done) {
+            // vx = 0;
         }
 
         if (acc and wheel) {
             // Use both wheel and accelerometer
-            // float ax = wheel_weight * wheel_ax + (1 - wheel_weight) * acc_ax;
-            float ax = wheel_ax;
+            float ax = wheel_weight * wheel_ax + (1 - wheel_weight) * acc_ax;
+            // float ax = wheel_ax;
             // s = ut + 1/2 at^2
-            x = x + vx * dt + 0.5 * ax * pow(dt, 2);
-            vx = vx + ax * dt;
+            x += vx * dt + 0.5 * ax * pow(dt, 2);
+            // v = u + at
+            vx += ax * dt;
         } else if (acc) {
             // Just use the accelerometer
             x = acc_x;
@@ -273,12 +293,6 @@ class Acc_Odometry {
             x = wheel_x;
         }
 
-        if (acc and wheel and (millis() - ts_compare) > COMAPRE_DELAY) {
-            // Periodically update accelerometer speed with wheel speed
-            acc_vx = wheel_vx;
-
-            ts_compare = millis();
-        }
         ts_old = ts_current;
     }
 };

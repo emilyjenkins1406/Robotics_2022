@@ -65,7 +65,7 @@ void setup() {
     state = forward;
 }
 
-int motor_speed = 50;
+int motor_speed = 70;
 
 // MAIN CODE:
 void loop() {
@@ -73,7 +73,10 @@ void loop() {
     // slow enough to observe.
     // There is a limit to how fast you
     // can make i2c readings.
-    odometry.integrate(display);
+    
+    // Acceleromter, Wheel
+    odometry.integrate(true, true);
+    
     // Serial.print(millis());
     // Serial.print(", ");
     odometry.dump_to_serial();
@@ -114,16 +117,17 @@ void loop() {
         case forward: {
             // Move forward for set time
             motors.move(motor_speed);
-            if ((int)(millis() - state_ts) > 3000) {
+            if ((int)(millis() - state_ts) > 6000) {
                 state = pause;
                 state_ts = millis();
                 odometry.wheel_weight = 1.0;
+                odometry.collision_done = false;
             }
             #if USE_DISPLAY
                 display.clear();
-                display.print(convertCountToMillimeters(count_l));
+                display.print(odometry.acc_ax);
                 display.gotoXY(0, 1);
-                display.print(odometry.x);
+                display.print(odometry.acc_vx);
             #endif
             break;
         }
@@ -139,7 +143,7 @@ void loop() {
         }
         case backward: {
             // Move back until overall distance is 0
-            motors.move(-25);
+            motors.move(-50);
             if (odometry.x < 0) {
                 state = stop;
                 state_ts = millis();

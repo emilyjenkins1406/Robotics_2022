@@ -42,7 +42,7 @@ void setup() {
     imu_setup();
 
     Button_c().wait_for_button(BTN_B);
-    delay(10000);
+    delay(5000);
 }
 
 // MAIN CODE:
@@ -50,12 +50,19 @@ void loop() {
     // Make a read of the sensor.
     // read_imu();
 
-    for (auto i = 0.3; i <= 1.0; i += 0.3) {
+    // Collect data for 0.3, 0.6, 0.9 and 1.0
+    for (auto i = 0.3; i <= 1.25; i += 0.3) {
+        i = min(i, 1.0);
         // Reset the smoothing factor
         Serial.print("Smoothing factor ");
         Serial.println(i);
         Serial.println("X, Y, Z");
         imu_exponential_smoothing = i;
+        // Read IMU for 5 seconds to let it reach a 'steady state'
+        unsigned long start_ts = millis();
+        while (start_ts - millis() < 5000) {
+            read_imu();
+        }
         for (auto j = 0; j < 1000; j++) {
             // Take 1000 readings
             read_imu();
